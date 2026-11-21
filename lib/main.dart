@@ -113,8 +113,9 @@ String fmtTime(int ms) {
 String fmtScore(int n) => n.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
 
-// Índice 0..6 -> tipo 1..7: reta de 3, canto de 3, P, V, W, cruz e U.
-// (Peças de 3 e 5 blocos: nenhuma peça de 4 blocos.)
+// Índice 0..6 -> tipo 1..7: reta de 3, canto, P, V, U, T grande e dominó.
+// Só formas retas e certinhas (sem diagonais) e nenhuma peça de 4 blocos.
+// Nenhuma passa de 3 blocos de largura ou altura.
 const List<List<List<int>>> kShapes = [
   [
     [0, 0, 0],
@@ -136,19 +137,18 @@ const List<List<List<int>>> kShapes = [
     [1, 1, 1],
   ],
   [
-    [1, 0, 0],
-    [1, 1, 0],
-    [0, 1, 1],
-  ],
-  [
-    [0, 1, 0],
-    [1, 1, 1],
-    [0, 1, 0],
-  ],
-  [
     [1, 0, 1],
     [1, 1, 1],
     [0, 0, 0],
+  ],
+  [
+    [1, 1, 1],
+    [0, 1, 0],
+    [0, 1, 0],
+  ],
+  [
+    [1, 1],
+    [0, 0],
   ],
 ];
 
@@ -648,7 +648,7 @@ class StackGame {
 
 // ===== painter.dart =====
 
-enum BlockTheme { nes, neon, madeira, vidro, retro, gema, ouro, cristal, holo }
+enum BlockTheme { nes, neon, madeira, vidro, retro, gema, ouro, cristal, holo, bichinhos }
 
 extension BlockThemeInfo on BlockTheme {
   String get label {
@@ -671,6 +671,8 @@ extension BlockThemeInfo on BlockTheme {
         return 'Cristal';
       case BlockTheme.holo:
         return 'Holo';
+      case BlockTheme.bichinhos:
+        return 'Bichinhos';
     }
   }
 
@@ -694,6 +696,8 @@ extension BlockThemeInfo on BlockTheme {
         return const [Color(0xFF06202E), Color(0xFF0D3B52)];
       case BlockTheme.holo:
         return const [Color(0xFF14081F), Color(0xFF082A2F)];
+      case BlockTheme.bichinhos:
+        return const [Color(0xFF3A2A4D), Color(0xFF58406B)];
     }
   }
 }
@@ -704,9 +708,9 @@ const List<Color> kPieceColors = [
   Color(0xFFFFB300), // peça 2 (canto)      - âmbar
   Color(0xFFEC407A), // peça 3 (P)          - rosa
   Color(0xFF9CCC65), // peça 4 (V)          - lima
-  Color(0xFFEF6C00), // peça 5 (W)          - laranja queimado
-  Color(0xFF5C6BC0), // peça 6 (cruz)       - índigo
-  Color(0xFF8D6E63), // peça 7 (U)          - cacau
+  Color(0xFFEF6C00), // peça 5 (U)          - laranja queimado
+  Color(0xFF5C6BC0), // peça 6 (T grande)    - índigo
+  Color(0xFF8D6E63), // peça 7 (dominó)      - cacau
   Color(0xFF8D8D8D), // lixo (multiplayer)
 ];
 
@@ -747,6 +751,167 @@ void drawBlock(Canvas canvas, Rect rect, Color base, BlockTheme theme) {
     case BlockTheme.holo:
       _holo(canvas, r, rr, base);
       break;
+    case BlockTheme.bichinhos:
+      _pets(canvas, r, rr, base);
+      break;
+  }
+}
+
+/// Bichinhos fofos: cada tipo de peça é um bichinho (gato, pintinho, porquinho,
+/// sapo, raposa, coelho e urso), com carinha em cada bloco.
+void _pets(Canvas canvas, Rect r, RRect rr, Color base) {
+  var t = kPieceColors.indexOf(base);
+  final isJunk = t == 8;
+  if (t < 1 || t > 7) t = 1;
+  final w = r.width;
+  final cx = r.center.dx;
+  final body = isJunk ? const Color(0xFFB8B8C4) : Color.lerp(base, Colors.white, 0.38)!;
+  final line = shade(isJunk ? const Color(0xFF8D8D8D) : base, -0.14);
+  final dark = const Color(0xFF2B2438);
+
+  // orelhas e detalhes de cima (desenhados dentro do bloco)
+  final earPaint = Paint()..color = line;
+  final innerPaint = Paint()..color = const Color(0xFFFFC4D6);
+  void pointyEars() {
+    for (final side in [-1.0, 1.0]) {
+      final x0 = cx + side * w * 0.36;
+      final p = Path()
+        ..moveTo(x0 - side * w * 0.2, r.top + w * 0.3)
+        ..lineTo(x0 + side * w * 0.02, r.top + w * 0.02)
+        ..lineTo(x0 + side * w * 0.12, r.top + w * 0.32)
+        ..close();
+      canvas.drawPath(p, earPaint);
+      final q = Path()
+        ..moveTo(x0 - side * w * 0.12, r.top + w * 0.28)
+        ..lineTo(x0 + side * w * 0.0, r.top + w * 0.1)
+        ..lineTo(x0 + side * w * 0.06, r.top + w * 0.28)
+        ..close();
+      canvas.drawPath(q, innerPaint);
+    }
+  }
+
+  void roundEars() {
+    for (final side in [-1.0, 1.0]) {
+      final c = Offset(cx + side * w * 0.32, r.top + w * 0.16);
+      canvas.drawCircle(c, w * 0.13, earPaint);
+      canvas.drawCircle(c, w * 0.065, innerPaint);
+    }
+  }
+
+  canvas.drawRRect(
+      rr,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [shade(body, 0.07), shade(body, -0.07)],
+        ).createShader(r));
+  canvas.drawRRect(
+      rr.deflate(w * 0.03),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.05
+        ..color = line);
+
+  switch (t) {
+    case 1: // gatinho
+    case 5: // raposinha
+      pointyEars();
+      break;
+    case 3: // porquinho
+    case 7: // ursinho
+      roundEars();
+      break;
+    case 6: // coelhinho (orelhas compridas)
+      for (final side in [-1.0, 1.0]) {
+        final e = Rect.fromCenter(
+            center: Offset(cx + side * w * 0.22, r.top + w * 0.15),
+            width: w * 0.16,
+            height: w * 0.28);
+        canvas.drawOval(e, earPaint);
+        canvas.drawOval(e.deflate(w * 0.04), innerPaint);
+      }
+      break;
+    case 2: // pintinho (topetinho)
+      final tuft = Path()
+        ..moveTo(cx - w * 0.06, r.top + w * 0.2)
+        ..quadraticBezierTo(cx - w * 0.04, r.top + w * 0.05, cx, r.top + w * 0.08)
+        ..quadraticBezierTo(cx + w * 0.02, r.top + w * 0.03, cx + w * 0.07, r.top + w * 0.2)
+        ..close();
+      canvas.drawPath(tuft, Paint()..color = const Color(0xFFFF8F00));
+      break;
+    case 4: // sapinho (olhos saltados)
+      for (final side in [-1.0, 1.0]) {
+        final c = Offset(cx + side * w * 0.24, r.top + w * 0.2);
+        canvas.drawCircle(c, w * 0.12, Paint()..color = line);
+        canvas.drawCircle(c, w * 0.08, Paint()..color = Colors.white);
+      }
+      break;
+  }
+
+  // olhinhos
+  final eyeY = r.top + w * 0.46;
+  for (final side in [-1.0, 1.0]) {
+    final c = Offset(cx + side * w * 0.2, eyeY);
+    if (isJunk) {
+      canvas.drawArc(Rect.fromCenter(center: c, width: w * 0.16, height: w * 0.1), 0, pi, false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = w * 0.04
+            ..color = dark);
+    } else {
+      canvas.drawOval(Rect.fromCenter(center: c, width: w * 0.13, height: w * 0.17), Paint()..color = dark);
+      canvas.drawCircle(c.translate(-w * 0.02, -w * 0.035), w * 0.025, Paint()..color = Colors.white);
+    }
+  }
+
+  // bochechas
+  final blush = Paint()..color = const Color(0x66FF6F91);
+  for (final side in [-1.0, 1.0]) {
+    canvas.drawCircle(Offset(cx + side * w * 0.32, r.top + w * 0.62), w * 0.07, blush);
+  }
+
+  // focinho / bico / boquinha
+  final mouth = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w * 0.035
+    ..strokeCap = StrokeCap.round
+    ..color = dark;
+  final my = r.top + w * 0.64;
+  switch (t) {
+    case 2: // bico
+      final beak = Path()
+        ..moveTo(cx - w * 0.07, my - w * 0.03)
+        ..lineTo(cx + w * 0.07, my - w * 0.03)
+        ..lineTo(cx, my + w * 0.07)
+        ..close();
+      canvas.drawPath(beak, Paint()..color = const Color(0xFFFF8F00));
+      break;
+    case 3: // focinho de porquinho
+      final snout = Rect.fromCenter(center: Offset(cx, my), width: w * 0.28, height: w * 0.18);
+      canvas.drawOval(snout, Paint()..color = const Color(0xFFFFA8BF));
+      canvas.drawCircle(Offset(cx - w * 0.05, my), w * 0.02, Paint()..color = dark);
+      canvas.drawCircle(Offset(cx + w * 0.05, my), w * 0.02, Paint()..color = dark);
+      break;
+    case 4: // sorrisão de sapo
+      canvas.drawArc(Rect.fromCenter(center: Offset(cx, my - w * 0.04), width: w * 0.44, height: w * 0.22),
+          0.15, pi - 0.3, false, mouth);
+      break;
+    case 7: // focinho de urso
+      canvas.drawOval(Rect.fromCenter(center: Offset(cx, my), width: w * 0.26, height: w * 0.18),
+          Paint()..color = const Color(0xFFF3DCC8));
+      canvas.drawCircle(Offset(cx, my - w * 0.03), w * 0.03, Paint()..color = dark);
+      break;
+    default: // gato, raposa e coelho: sorrisinho
+      canvas.drawArc(Rect.fromCenter(center: Offset(cx, my - w * 0.02), width: w * 0.2, height: w * 0.13),
+          0.1, pi - 0.2, false, mouth);
+      if (t == 1) {
+        // bigodes
+        for (final side in [-1.0, 1.0]) {
+          canvas.drawLine(Offset(cx + side * w * 0.34, my - w * 0.02), Offset(cx + side * w * 0.46, my - w * 0.05), mouth..strokeWidth = w * 0.02);
+          canvas.drawLine(Offset(cx + side * w * 0.34, my + w * 0.03), Offset(cx + side * w * 0.46, my + w * 0.05), mouth);
+        }
+      }
   }
 }
 
@@ -11780,7 +11945,7 @@ List<_TutStep> _tutSteps() => [
       _TutStep(
         title: 'Bem-vindo ao Empilha!',
         text: 'Encaixe as peças que caem para completar linhas horizontais. '
-            'Cada linha completa some e dá pontos. As peças têm 3 ou 5 '
+            'Cada linha completa some e dá pontos. As peças têm 2, 3 ou 5 '
             'blocos e, depois de limpar linhas, os blocos soltos CAEM sozinhos: '
             'se isso fechar outra linha, é uma CASCATA com pontos em dobro, '
             'triplo... Este tutorial rápido ensina o essencial e só é '
