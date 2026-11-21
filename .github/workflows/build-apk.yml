@@ -36,8 +36,8 @@ jobs:
 
       - run: flutter build apk --release --build-number=${{ github.run_number }}
 
-      # A chave de assinatura fica em Secrets (nunca no repositório).
-      # Sem os Secrets o build continua e o APK sai com a assinatura de debug.
+      # A chave fica em Secrets (nunca no repositório). Sem os Secrets o build
+      # continua e o APK sai com a assinatura de debug.
       - name: Assinar APK com a chave fixa
         env:
           KS_B64: ${{ secrets.KEYSTORE_BASE64 }}

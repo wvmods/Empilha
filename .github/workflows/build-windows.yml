@@ -34,11 +34,10 @@ jobs:
       - name: Compactar
         shell: pwsh
         run: |
-          if (-not (Test-Path build\windows\x64\runner\Release\empilha.exe)) {
-            Get-ChildItem build\windows\x64\runner\Release
-            throw "empilha.exe não foi gerado"
-          }
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath Empilha-Windows.zip
+          $dir = "build\windows\x64\runner\Release"
+          Get-ChildItem $dir
+          if (-not (Test-Path "$dir\empilha.exe")) { throw "empilha.exe não foi gerado" }
+          Compress-Archive -Path "$dir\*" -DestinationPath Empilha-Windows.zip
 
       - uses: actions/upload-artifact@v4
         with:
