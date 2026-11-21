@@ -27,9 +27,15 @@ jobs:
       - name: Gerar plataforma Android
         run: flutter create --platforms=android --org com.empilha --project-name empilha_game .
 
-      - name: Nome e ícone do app
+      - name: Nome, internet e ícone do app
         run: |
-          sed -i 's/android:label="[^"]*"/android:label="Empilha"/' android/app/src/main/AndroidManifest.xml
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="Empilha"/' $M
+          # O Flutter só põe a permissão de internet nos builds de debug.
+          # Sem ela o APK de release não conecta ao servidor online.
+          grep -q 'android.permission.INTERNET' $M || \
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $M
+          grep -n 'INTERNET\|android:label' $M
           python3 tools/make_icon.py android/app/src/main/res
 
       - run: flutter pub get
