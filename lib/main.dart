@@ -113,42 +113,42 @@ String fmtTime(int ms) {
 String fmtScore(int n) => n.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
 
-// Índice 0..6 -> tipo 1..7: reta de 3, canto, P, V, U, T grande e dominó.
-// Só formas retas e certinhas (sem diagonais) e nenhuma peça de 4 blocos.
-// Nenhuma passa de 3 blocos de largura ou altura.
+// Índice 0..6 -> tipo 1..7 (I, O, T, S, Z, J, L)
 const List<List<List<int>>> kShapes = [
   [
-    [0, 0, 0],
-    [1, 1, 1],
-    [0, 0, 0],
+    [0, 0, 0, 0],
+    [1, 1, 1, 1],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
   ],
   [
     [1, 1],
-    [1, 0],
+    [1, 1],
   ],
   [
-    [1, 1, 0],
-    [1, 1, 0],
-    [1, 0, 0],
-  ],
-  [
-    [1, 0, 0],
-    [1, 0, 0],
-    [1, 1, 1],
-  ],
-  [
-    [1, 0, 1],
+    [0, 1, 0],
     [1, 1, 1],
     [0, 0, 0],
   ],
   [
-    [1, 1, 1],
-    [0, 1, 0],
-    [0, 1, 0],
+    [0, 1, 1],
+    [1, 1, 0],
+    [0, 0, 0],
   ],
   [
-    [1, 1],
-    [0, 0],
+    [1, 1, 0],
+    [0, 1, 1],
+    [0, 0, 0],
+  ],
+  [
+    [1, 0, 0],
+    [1, 1, 1],
+    [0, 0, 0],
+  ],
+  [
+    [0, 0, 1],
+    [1, 1, 1],
+    [0, 0, 0],
   ],
 ];
 
@@ -522,7 +522,7 @@ class StackGame {
       total += n;
       if (n >= 3) triples++;
       // Cada elo da cascata vale mais: x1, x2, x3...
-      score += const [0, 90, 260, 520][min(n, 3)] * lvl * chain;
+      score += const [0, 90, 260, 520, 900][min(n, 4)] * lvl * chain;
     }
     lastCleared = total;
     lastChain = chain;
@@ -550,7 +550,9 @@ class StackGame {
     String name;
     if (chain > 1) {
       name = 'CASCATA x$chain';
-    } else if (total >= 3) {
+    } else if (total >= 4) {
+      name = 'QUADRA!';
+    } else if (total == 3) {
       name = 'TRIPLA!';
     } else if (combo > 0) {
       name = 'COMBO x${combo + 1}';
@@ -648,7 +650,7 @@ class StackGame {
 
 // ===== painter.dart =====
 
-enum BlockTheme { nes, neon, madeira, vidro, retro, gema, ouro, cristal, holo, bichinhos }
+enum BlockTheme { nes, neon, madeira, vidro, retro, gema, ouro, cristal, holo, bichinhos, geleia }
 
 extension BlockThemeInfo on BlockTheme {
   String get label {
@@ -673,6 +675,8 @@ extension BlockThemeInfo on BlockTheme {
         return 'Holo';
       case BlockTheme.bichinhos:
         return 'Bichinhos';
+      case BlockTheme.geleia:
+        return 'Geleia';
     }
   }
 
@@ -697,20 +701,22 @@ extension BlockThemeInfo on BlockTheme {
       case BlockTheme.holo:
         return const [Color(0xFF14081F), Color(0xFF082A2F)];
       case BlockTheme.bichinhos:
-        return const [Color(0xFF3A2A4D), Color(0xFF58406B)];
+        return const [Color(0xFF5B4B8A), Color(0xFF8A6FB5)];
+      case BlockTheme.geleia:
+        return const [Color(0xFF2B1A4A), Color(0xFF4A2A6B)];
     }
   }
 }
 
 const List<Color> kPieceColors = [
   Colors.transparent,
-  Color(0xFF26C6DA), // peça 1 (reta de 3)  - turquesa
-  Color(0xFFFFB300), // peça 2 (canto)      - âmbar
-  Color(0xFFEC407A), // peça 3 (P)          - rosa
-  Color(0xFF9CCC65), // peça 4 (V)          - lima
-  Color(0xFFEF6C00), // peça 5 (U)          - laranja queimado
-  Color(0xFF5C6BC0), // peça 6 (T grande)    - índigo
-  Color(0xFF8D6E63), // peça 7 (dominó)      - cacau
+  Color(0xFF26C6DA), // peça 1 (I)           - turquesa
+  Color(0xFFFFB300), // peça 2 (O)           - âmbar
+  Color(0xFFEC407A), // peça 3 (T)           - rosa
+  Color(0xFF9CCC65), // peça 4 (S)           - lima
+  Color(0xFFEF6C00), // peça 5 (Z)           - laranja queimado
+  Color(0xFF5C6BC0), // peça 6 (J)           - índigo
+  Color(0xFF8D6E63), // peça 7 (L)           - cacau
   Color(0xFF8D8D8D), // lixo (multiplayer)
 ];
 
@@ -754,165 +760,251 @@ void drawBlock(Canvas canvas, Rect rect, Color base, BlockTheme theme) {
     case BlockTheme.bichinhos:
       _pets(canvas, r, rr, base);
       break;
+    case BlockTheme.geleia:
+      _jelly(canvas, r, rr, base);
+      break;
   }
 }
 
-/// Bichinhos fofos: cada tipo de peça é um bichinho (gato, pintinho, porquinho,
-/// sapo, raposa, coelho e urso), com carinha em cada bloco.
+/// Bichinhos fofos (estilo kawaii): cada tipo de peça é um animalzinho com
+/// a sua própria cor: gatinho laranja, pintinho amarelo, porquinho rosa,
+/// sapinho verde, pandinha, coelhinho lilás e ursinho marrom.
 void _pets(Canvas canvas, Rect r, RRect rr, Color base) {
-  var t = kPieceColors.indexOf(base);
-  final isJunk = t == 8;
-  if (t < 1 || t > 7) t = 1;
+  final t = kPieceColors.indexOf(base);
   final w = r.width;
   final cx = r.center.dx;
-  final body = isJunk ? const Color(0xFFB8B8C4) : Color.lerp(base, Colors.white, 0.38)!;
-  final line = shade(isJunk ? const Color(0xFF8D8D8D) : base, -0.14);
-  final dark = const Color(0xFF2B2438);
+  const dark = Color(0xFF3A2A3F);
 
-  // orelhas e detalhes de cima (desenhados dentro do bloco)
-  final earPaint = Paint()..color = line;
-  final innerPaint = Paint()..color = const Color(0xFFFFC4D6);
-  void pointyEars() {
+  // peça fantasma (cor com transparência): só um contorno suave
+  if (t < 1 || t > 8) {
+    canvas.drawRRect(rr, Paint()..color = base.withAlpha(base.alpha ~/ 2));
+    canvas.drawRRect(
+        rr.deflate(w * 0.04),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = w * 0.06
+          ..color = base);
+    return;
+  }
+
+  // cor do corpo de cada bichinho
+  const bodies = <int, Color>{
+    1: Color(0xFFFFB067), // gatinho laranja
+    2: Color(0xFFFFE066), // pintinho amarelo
+    3: Color(0xFFFFA6C4), // porquinho rosa
+    4: Color(0xFF9BE08A), // sapinho verde
+    5: Color(0xFFF6F3FA), // pandinha
+    6: Color(0xFFD7C2FF), // coelhinho lilás
+    7: Color(0xFFC8946A), // ursinho marrom
+    8: Color(0xFFC9C9D6), // nuvenzinha (lixo)
+  };
+  final body = bodies[t]!;
+  final edge = shade(body, -0.16);
+  final inner = const Color(0xFFFFC4D6);
+
+  // orelhas (desenhadas antes para ficarem atrás do rosto)
+  void pointy(Color c) {
     for (final side in [-1.0, 1.0]) {
-      final x0 = cx + side * w * 0.36;
+      final x0 = cx + side * w * 0.3;
       final p = Path()
-        ..moveTo(x0 - side * w * 0.2, r.top + w * 0.3)
-        ..lineTo(x0 + side * w * 0.02, r.top + w * 0.02)
-        ..lineTo(x0 + side * w * 0.12, r.top + w * 0.32)
+        ..moveTo(x0 - side * w * 0.2, r.top + w * 0.34)
+        ..lineTo(x0 + side * w * 0.04, r.top + w * 0.0)
+        ..lineTo(x0 + side * w * 0.2, r.top + w * 0.34)
         ..close();
-      canvas.drawPath(p, earPaint);
+      canvas.drawPath(p, Paint()..color = c);
       final q = Path()
-        ..moveTo(x0 - side * w * 0.12, r.top + w * 0.28)
-        ..lineTo(x0 + side * w * 0.0, r.top + w * 0.1)
-        ..lineTo(x0 + side * w * 0.06, r.top + w * 0.28)
+        ..moveTo(x0 - side * w * 0.09, r.top + w * 0.3)
+        ..lineTo(x0 + side * w * 0.04, r.top + w * 0.1)
+        ..lineTo(x0 + side * w * 0.14, r.top + w * 0.3)
         ..close();
-      canvas.drawPath(q, innerPaint);
+      canvas.drawPath(q, Paint()..color = inner);
     }
   }
 
-  void roundEars() {
+  void round(Color c, {bool withInner = true}) {
     for (final side in [-1.0, 1.0]) {
-      final c = Offset(cx + side * w * 0.32, r.top + w * 0.16);
-      canvas.drawCircle(c, w * 0.13, earPaint);
-      canvas.drawCircle(c, w * 0.065, innerPaint);
+      final o = Offset(cx + side * w * 0.33, r.top + w * 0.17);
+      canvas.drawCircle(o, w * 0.15, Paint()..color = c);
+      if (withInner) canvas.drawCircle(o, w * 0.075, Paint()..color = inner);
     }
   }
 
+  switch (t) {
+    case 1:
+      pointy(edge);
+      break;
+    case 3:
+      round(edge);
+      break;
+    case 5:
+      round(const Color(0xFF3A3340), withInner: false);
+      break;
+    case 7:
+      round(edge);
+      break;
+    case 6:
+      for (final side in [-1.0, 1.0]) {
+        final e = Rect.fromCenter(
+            center: Offset(cx + side * w * 0.2, r.top + w * 0.14),
+            width: w * 0.17,
+            height: w * 0.3);
+        canvas.drawOval(e, Paint()..color = edge);
+        canvas.drawOval(e.deflate(w * 0.04), Paint()..color = inner);
+      }
+      break;
+    case 4:
+      for (final side in [-1.0, 1.0]) {
+        final o = Offset(cx + side * w * 0.26, r.top + w * 0.17);
+        canvas.drawCircle(o, w * 0.14, Paint()..color = edge);
+        canvas.drawCircle(o, w * 0.1, Paint()..color = body);
+      }
+      break;
+  }
+
+  // corpinho fofo (gordinho e brilhante)
   canvas.drawRRect(
       rr,
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [shade(body, 0.07), shade(body, -0.07)],
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.5),
+          radius: 1.2,
+          colors: [shade(body, 0.1), body, shade(body, -0.1)],
+          stops: const [0, 0.55, 1],
+        ).createShader(r));
+  canvas.drawRRect(
+      rr.deflate(w * 0.025),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.05
+        ..color = edge);
+
+  // manchinhas do rosto
+  if (t == 5) {
+    for (final side in [-1.0, 1.0]) {
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(cx + side * w * 0.2, r.top + w * 0.46), width: w * 0.24, height: w * 0.3),
+          Paint()..color = const Color(0xFF3A3340));
+    }
+  }
+  if (t == 1) {
+    // listrinhas de gato laranja
+    final stripe = Paint()
+      ..color = shade(body, -0.14)
+      ..strokeWidth = w * 0.04
+      ..strokeCap = StrokeCap.round;
+    for (final dx in [-0.08, 0.0, 0.08]) {
+      canvas.drawLine(Offset(cx + dx * w, r.top + w * 0.1), Offset(cx + dx * w, r.top + w * 0.2), stripe);
+    }
+  }
+  if (t == 2) {
+    final tuft = Path()
+      ..moveTo(cx - w * 0.07, r.top + w * 0.14)
+      ..quadraticBezierTo(cx - w * 0.04, r.top + w * 0.02, cx, r.top + w * 0.07)
+      ..quadraticBezierTo(cx + w * 0.03, r.top + w * 0.0, cx + w * 0.08, r.top + w * 0.14)
+      ..close();
+    canvas.drawPath(tuft, Paint()..color = const Color(0xFFFFB300));
+  }
+
+  // olhos grandes e brilhantes
+  final eyeY = r.top + w * 0.47;
+  for (final side in [-1.0, 1.0]) {
+    final c = Offset(cx + side * w * 0.2, eyeY);
+    if (t == 8) {
+      canvas.drawArc(Rect.fromCenter(center: c, width: w * 0.17, height: w * 0.1), 0, pi, false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = w * 0.045
+            ..strokeCap = StrokeCap.round
+            ..color = dark);
+    } else {
+      final eyeCol = t == 5 ? Colors.black : dark;
+      canvas.drawOval(Rect.fromCenter(center: c, width: w * 0.16, height: w * 0.21), Paint()..color = eyeCol);
+      canvas.drawCircle(c.translate(-w * 0.025, -w * 0.045), w * 0.036, Paint()..color = Colors.white);
+      canvas.drawCircle(c.translate(w * 0.025, w * 0.04), w * 0.016, Paint()..color = Colors.white70);
+    }
+  }
+
+  // bochechinhas rosadas
+  final blush = Paint()..color = const Color(0x80FF7A9C);
+  for (final side in [-1.0, 1.0]) {
+    canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx + side * w * 0.34, r.top + w * 0.63), width: w * 0.15, height: w * 0.09),
+        blush);
+  }
+
+  // focinho / bico / boquinha
+  final mouth = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w * 0.04
+    ..strokeCap = StrokeCap.round
+    ..color = dark;
+  final my = r.top + w * 0.66;
+  switch (t) {
+    case 2:
+      final beak = Path()
+        ..moveTo(cx - w * 0.07, my - w * 0.035)
+        ..lineTo(cx + w * 0.07, my - w * 0.035)
+        ..lineTo(cx, my + w * 0.07)
+        ..close();
+      canvas.drawPath(beak, Paint()..color = const Color(0xFFFF8F00));
+      break;
+    case 3:
+      canvas.drawOval(Rect.fromCenter(center: Offset(cx, my), width: w * 0.3, height: w * 0.19), Paint()..color = const Color(0xFFFF8FB3));
+      canvas.drawCircle(Offset(cx - w * 0.05, my), w * 0.022, Paint()..color = dark);
+      canvas.drawCircle(Offset(cx + w * 0.05, my), w * 0.022, Paint()..color = dark);
+      break;
+    case 7:
+      canvas.drawOval(Rect.fromCenter(center: Offset(cx, my), width: w * 0.28, height: w * 0.2), Paint()..color = const Color(0xFFF3DCC8));
+      canvas.drawCircle(Offset(cx, my - w * 0.035), w * 0.035, Paint()..color = dark);
+      break;
+    case 4:
+      canvas.drawArc(Rect.fromCenter(center: Offset(cx, my - w * 0.05), width: w * 0.42, height: w * 0.22), 0.2, pi - 0.4, false, mouth);
+      break;
+    default:
+      // sorrisinho em "w" (gato, panda, coelho e nuvem)
+      final m = Path()
+        ..moveTo(cx - w * 0.09, my - w * 0.02)
+        ..quadraticBezierTo(cx - w * 0.045, my + w * 0.07, cx, my - w * 0.005)
+        ..quadraticBezierTo(cx + w * 0.045, my + w * 0.07, cx + w * 0.09, my - w * 0.02);
+      canvas.drawPath(m, mouth);
+  }
+
+  // brilho de plush no cantinho
+  canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(r.left + w * 0.12, r.top + w * 0.28, w * 0.1, w * 0.045), Radius.circular(w * 0.03)),
+      Paint()..color = Colors.white.withAlpha(110));
+}
+
+/// Geleia: blocos gordinhos, brilhantes e translúcidos, com sombra colorida.
+void _jelly(Canvas canvas, Rect r, RRect rr, Color base) {
+  final w = r.width;
+  final jelly = Color.lerp(base, Colors.white, 0.12)!;
+  // sombrinha colorida embaixo
+  canvas.drawRRect(rr.shift(Offset(0, w * 0.05)), Paint()..color = shade(base, -0.3).withAlpha(140));
+  canvas.drawRRect(
+      rr,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.45),
+          radius: 1.15,
+          colors: [shade(jelly, 0.2), jelly, shade(jelly, -0.12)],
+          stops: const [0, 0.5, 1],
         ).createShader(r));
   canvas.drawRRect(
       rr.deflate(w * 0.03),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = w * 0.05
-        ..color = line);
-
-  switch (t) {
-    case 1: // gatinho
-    case 5: // raposinha
-      pointyEars();
-      break;
-    case 3: // porquinho
-    case 7: // ursinho
-      roundEars();
-      break;
-    case 6: // coelhinho (orelhas compridas)
-      for (final side in [-1.0, 1.0]) {
-        final e = Rect.fromCenter(
-            center: Offset(cx + side * w * 0.22, r.top + w * 0.15),
-            width: w * 0.16,
-            height: w * 0.28);
-        canvas.drawOval(e, earPaint);
-        canvas.drawOval(e.deflate(w * 0.04), innerPaint);
-      }
-      break;
-    case 2: // pintinho (topetinho)
-      final tuft = Path()
-        ..moveTo(cx - w * 0.06, r.top + w * 0.2)
-        ..quadraticBezierTo(cx - w * 0.04, r.top + w * 0.05, cx, r.top + w * 0.08)
-        ..quadraticBezierTo(cx + w * 0.02, r.top + w * 0.03, cx + w * 0.07, r.top + w * 0.2)
-        ..close();
-      canvas.drawPath(tuft, Paint()..color = const Color(0xFFFF8F00));
-      break;
-    case 4: // sapinho (olhos saltados)
-      for (final side in [-1.0, 1.0]) {
-        final c = Offset(cx + side * w * 0.24, r.top + w * 0.2);
-        canvas.drawCircle(c, w * 0.12, Paint()..color = line);
-        canvas.drawCircle(c, w * 0.08, Paint()..color = Colors.white);
-      }
-      break;
-  }
-
-  // olhinhos
-  final eyeY = r.top + w * 0.46;
-  for (final side in [-1.0, 1.0]) {
-    final c = Offset(cx + side * w * 0.2, eyeY);
-    if (isJunk) {
-      canvas.drawArc(Rect.fromCenter(center: c, width: w * 0.16, height: w * 0.1), 0, pi, false,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = w * 0.04
-            ..color = dark);
-    } else {
-      canvas.drawOval(Rect.fromCenter(center: c, width: w * 0.13, height: w * 0.17), Paint()..color = dark);
-      canvas.drawCircle(c.translate(-w * 0.02, -w * 0.035), w * 0.025, Paint()..color = Colors.white);
-    }
-  }
-
-  // bochechas
-  final blush = Paint()..color = const Color(0x66FF6F91);
-  for (final side in [-1.0, 1.0]) {
-    canvas.drawCircle(Offset(cx + side * w * 0.32, r.top + w * 0.62), w * 0.07, blush);
-  }
-
-  // focinho / bico / boquinha
-  final mouth = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = w * 0.035
-    ..strokeCap = StrokeCap.round
-    ..color = dark;
-  final my = r.top + w * 0.64;
-  switch (t) {
-    case 2: // bico
-      final beak = Path()
-        ..moveTo(cx - w * 0.07, my - w * 0.03)
-        ..lineTo(cx + w * 0.07, my - w * 0.03)
-        ..lineTo(cx, my + w * 0.07)
-        ..close();
-      canvas.drawPath(beak, Paint()..color = const Color(0xFFFF8F00));
-      break;
-    case 3: // focinho de porquinho
-      final snout = Rect.fromCenter(center: Offset(cx, my), width: w * 0.28, height: w * 0.18);
-      canvas.drawOval(snout, Paint()..color = const Color(0xFFFFA8BF));
-      canvas.drawCircle(Offset(cx - w * 0.05, my), w * 0.02, Paint()..color = dark);
-      canvas.drawCircle(Offset(cx + w * 0.05, my), w * 0.02, Paint()..color = dark);
-      break;
-    case 4: // sorrisão de sapo
-      canvas.drawArc(Rect.fromCenter(center: Offset(cx, my - w * 0.04), width: w * 0.44, height: w * 0.22),
-          0.15, pi - 0.3, false, mouth);
-      break;
-    case 7: // focinho de urso
-      canvas.drawOval(Rect.fromCenter(center: Offset(cx, my), width: w * 0.26, height: w * 0.18),
-          Paint()..color = const Color(0xFFF3DCC8));
-      canvas.drawCircle(Offset(cx, my - w * 0.03), w * 0.03, Paint()..color = dark);
-      break;
-    default: // gato, raposa e coelho: sorrisinho
-      canvas.drawArc(Rect.fromCenter(center: Offset(cx, my - w * 0.02), width: w * 0.2, height: w * 0.13),
-          0.1, pi - 0.2, false, mouth);
-      if (t == 1) {
-        // bigodes
-        for (final side in [-1.0, 1.0]) {
-          canvas.drawLine(Offset(cx + side * w * 0.34, my - w * 0.02), Offset(cx + side * w * 0.46, my - w * 0.05), mouth..strokeWidth = w * 0.02);
-          canvas.drawLine(Offset(cx + side * w * 0.34, my + w * 0.03), Offset(cx + side * w * 0.46, my + w * 0.05), mouth);
-        }
-      }
-  }
+        ..color = shade(jelly, 0.25).withAlpha(150));
+  // brilho comprido e pontinho de luz
+  canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(r.left + w * 0.16, r.top + w * 0.12, w * 0.5, w * 0.15), Radius.circular(w * 0.08)),
+      Paint()..color = Colors.white.withAlpha(170));
+  canvas.drawCircle(Offset(r.left + w * 0.76, r.top + w * 0.2), w * 0.04, Paint()..color = Colors.white.withAlpha(190));
+  // reflexo inferior
+  canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(r.left + w * 0.2, r.bottom - w * 0.2, w * 0.6, w * 0.07), Radius.circular(w * 0.04)),
+      Paint()..color = shade(jelly, 0.3).withAlpha(90));
 }
 
 void _neon(Canvas canvas, Rect r, RRect rr, Color base) {
@@ -3976,7 +4068,7 @@ class _GameScreenState extends State<GameScreen>
           padding: const EdgeInsets.only(top: 4),
           child: Text(
               [
-                if (game.triples > 0) 'Triplas: ${game.triples}',
+                if (game.triples > 0) 'Triplas ou mais: ${game.triples}',
                 if (game.maxChain > 1) 'Maior cascata: x${game.maxChain}',
                 if (game.maxCombo > 1) 'Maior combo: x${game.maxCombo}',
               ].join('   '),
@@ -11094,7 +11186,7 @@ class AntiCheat {
     if (!versus &&
         g.mode != GameMode.cheese &&
         g.mode != GameMode.survival &&
-        g.lines * kCols > pieces * 5) {
+        g.lines * kCols > pieces * 4) {
       return 'mais linhas do que as peças permitem';
     }
     if (g.score > (pieces + 1) * (60 + g.level * 3800)) {
@@ -11945,11 +12037,10 @@ List<_TutStep> _tutSteps() => [
       _TutStep(
         title: 'Bem-vindo ao Empilha!',
         text: 'Encaixe as peças que caem para completar linhas horizontais. '
-            'Cada linha completa some e dá pontos. As peças têm 2, 3 ou 5 '
-            'blocos e, depois de limpar linhas, os blocos soltos CAEM sozinhos: '
-            'se isso fechar outra linha, é uma CASCATA com pontos em dobro, '
-            'triplo... Este tutorial rápido ensina o essencial e só é '
-            'obrigatório na primeira vez.',
+            'Cada linha completa some e dá pontos. Depois de limpar linhas, '
+            'os blocos soltos CAEM sozinhos: se isso fechar outra linha, é '
+            'uma CASCATA com pontos em dobro, triplo... Este tutorial rápido '
+            'ensina o essencial e só é obrigatório na primeira vez.',
         build: () => _tutGame(3),
       ),
       _TutStep(
@@ -11982,7 +12073,7 @@ List<_TutStep> _tutSteps() => [
             'girar duas vezes, use o botão rosa de 180° (no teclado, a tecla '
             'Q; no modo só gestos, segure o dedo parado no tabuleiro). '
             'É um movimento só.',
-        build: () => _tutGame(4),
+        build: () => _tutGame(7),
         goals: [
           _TutGoal((g, c) => 'Gire 180° com o botão rosa (${min(c.flips, 2)}/2)',
               (g, c) => c.flips >= 2),
@@ -11993,7 +12084,7 @@ List<_TutStep> _tutSteps() => [
         text: 'A seta para baixo desce a peça devagar. O botão amarelo de '
             'queda (ou deslizar rápido para baixo) joga a peça de uma vez e '
             'a trava no lugar.',
-        build: () => _tutGame(7),
+        build: () => _tutGame(6),
         goals: [
           _TutGoal((g, c) => 'Segure a seta para baixo até o fundo',
               (g, c) => g.current.y >= g.ghostY),
@@ -12006,13 +12097,14 @@ List<_TutStep> _tutSteps() => [
         text: 'Leve a peça até o espaço brilhante e solte com a queda. '
             'Linha completa desaparece!',
         build: () => _tutGame(1, gaps: {
-          kRows - 1: [0, 1, 2]
+          kRows - 1: [0, 1, 2, 3]
         }),
         resetOnLock: true,
         targets: [
           [kRows - 1, 0],
           [kRows - 1, 1],
           [kRows - 1, 2],
+          [kRows - 1, 3],
         ],
         goals: [
           _TutGoal((g, c) => 'Encaixe a peça no espaço marcado e solte',
@@ -12022,16 +12114,17 @@ List<_TutStep> _tutSteps() => [
       _TutStep(
         title: '6. Várias linhas',
         text: 'Quanto mais linhas de uma vez, mais pontos você ganha. '
-            'Encaixe o canto para limpar duas linhas juntas.',
+            'Encaixe o quadrado para limpar duas linhas juntas.',
         build: () => _tutGame(2, gaps: {
           kRows - 2: [kCols - 2, kCols - 1],
-          kRows - 1: [kCols - 2],
+          kRows - 1: [kCols - 2, kCols - 1],
         }),
         resetOnLock: true,
         targets: [
           [kRows - 2, kCols - 2],
           [kRows - 2, kCols - 1],
           [kRows - 1, kCols - 2],
+          [kRows - 1, kCols - 1],
         ],
         goals: [
           _TutGoal((g, c) => 'Limpe 2 linhas de uma vez',
@@ -12039,24 +12132,26 @@ List<_TutStep> _tutSteps() => [
         ],
       ),
       _TutStep(
-        title: '7. TRIPLA!',
-        text: 'Nenhuma peça é mais alta que 3 blocos, então 3 linhas de uma '
-            'vez é o máximo: a TRIPLA, que vale muitos pontos. Gire a reta '
-            'para ficar em pé e leve até o poço da direita.',
+        title: '7. QUADRA!',
+        text: 'Limpar 4 linhas de uma vez é a QUADRA, a jogada que mais '
+            'pontua. Gire a peça comprida para ficar em pé e leve até o '
+            'poço da direita.',
         build: () => _tutGame(1, gaps: {
+          kRows - 4: [kCols - 1],
           kRows - 3: [kCols - 1],
           kRows - 2: [kCols - 1],
           kRows - 1: [kCols - 1],
         }),
         resetOnLock: true,
         targets: [
+          [kRows - 4, kCols - 1],
           [kRows - 3, kCols - 1],
           [kRows - 2, kCols - 1],
           [kRows - 1, kCols - 1],
         ],
         goals: [
-          _TutGoal((g, c) => 'Faça uma TRIPLA: 3 linhas de uma vez',
-              (g, c) => g.lines >= 3),
+          _TutGoal((g, c) => 'Faça uma QUADRA: 4 linhas de uma vez',
+              (g, c) => g.lines >= 4),
         ],
       ),
       _TutStep(
@@ -12080,8 +12175,8 @@ List<_TutStep> _tutSteps() => [
             'claro (fantasma) mostra onde a peça vai cair.',
         build: () {
           final g = _tutGame(1, gaps: {
-            kRows - 2: [3, 4, 5],
-            kRows - 1: [3, 4, 5],
+            kRows - 2: [3, 4, 5, 6],
+            kRows - 1: [3, 4, 5, 6],
           });
           g.forceQueue([1]);
           return g;
