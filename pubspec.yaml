@@ -1,0 +1,19 @@
+name: empilha_game
+description: Empilha, um jogo de blocos para Android e Windows (teclado e controle) com vários modos de jogo, texturas, música e efeitos sonoros.
+publish_to: 'none'
+version: 1.5.0+7
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.0
+  audioplayers: ^6.1.0
+  http: ^1.2.0
+  crypto: ^3.0.3
+  ffi: ^2.1.0
+
+flutter:
+  uses-material-design: true
